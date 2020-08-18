@@ -1,4 +1,4 @@
-package com.joke.essayjoke;
+package com.joke.easyjoke;
 
 import androidx.appcompat.app.AppCompatActivity;
 
