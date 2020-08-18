@@ -60,16 +60,10 @@ public class ViewUtils {
                         View view = finder.findViewById(viewId);
                         //获取注解位置
                         CheckNet checkNet = method.getAnnotation(CheckNet.class);
-                        Context context = null;
-                        if (checkNet != null) {
-                            if(object instanceof View) context = ((View) object).getContext();
-                            if(object instanceof Activity) context = (Context) object;
-                            if(context == null){
-                                throw new RuntimeException("Context is null");
-                            }
-                        }
-                        if (view != null && context!=null && isNetworkAvailable(context)) {
-                            view.setOnClickListener(new DeclareOnClickListener(method, object));
+                        boolean isCheckNet = checkNet != null;
+                        //4、动态的为方法注入事件
+                        if (view != null) {
+                            view.setOnClickListener(new DeclareOnClickListener(method, object, isCheckNet));
                         }
                     }
                 }
@@ -80,14 +74,21 @@ public class ViewUtils {
     private static class DeclareOnClickListener implements View.OnClickListener {
         private Method method;
         private Object handerType;
+        private boolean isCheckNet;
 
-        public DeclareOnClickListener(Method method, Object handlerType) {
+        public DeclareOnClickListener(Method method, Object handlerType, boolean isCheckNetwork) {
             this.method = method;
             this.handerType = handlerType;
+            this.isCheckNet = isCheckNetwork;
         }
 
         @Override
         public void onClick(View view) {
+            //是否需要检测网络
+            if (isCheckNet && !networkAvailable(view.getContext())) {
+                Toast.makeText(view.getContext(), "网络不可用", Toast.LENGTH_SHORT).show();
+                return;
+            }
             //调用反射的方法
             method.setAccessible(true);
             try {
@@ -104,28 +105,20 @@ public class ViewUtils {
     }
 
     /**
-     * 检查网络是否可用 思考
+     * 检查网络是否可用
      *
      * @param context
      * @return
      */
-    public static boolean isNetworkAvailable(Context context) {
-        boolean isNetwork = true;
-        ConnectivityManager manager = (ConnectivityManager) context
-                .getApplicationContext().getSystemService(
-                        Context.CONNECTIVITY_SERVICE);
-        if (manager == null) {
-            isNetwork = false;
+    private static boolean networkAvailable(Context context) {
+        boolean isAvailable = false;
+        ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo info = manager.getActiveNetworkInfo();
+        if (info != null) {
+            isAvailable = info.isAvailable();
         }
-        NetworkInfo networkinfo = manager.getActiveNetworkInfo();
-        if (networkinfo == null || !networkinfo.isAvailable()) {
-            isNetwork = false;
-        }
-        if(!isNetwork) {
-            //toast
-            Toast.makeText(context, "亲，当前无网络哦", Toast.LENGTH_LONG).show();
-        }
-        return isNetwork;
+
+        return isAvailable;
     }
 
     private static void injectFiled(ViewFinder finder, Object object) {
